@@ -73,26 +73,48 @@ def findRandomMove(validMoves):
 
 import time
 
-def findBestMoveMinimax(gs, validMoves):
+import time
+
+def findBestMoveMinimax(gs, validMoves, difficulty="Medium"):  
     global nextMove, nodes
     nextMove = None
     alpha = -CHECKMATE
     beta = CHECKMATE
     nodes = 0
-    start_time = time.time()  # Store start time
+    start_time = time.time()  
 
-    # Pass start_time to the function
-    findMoveMinimax(gs, validMoves, MAX_DEPTH, alpha, beta, gs.whiteToMove, start_time)
+    # Map difficulty to search depth
+    depth_map = {"Easy": 2, "Medium": 3, "Hard": 4}
+    search_depth = depth_map.get(difficulty, 4)  # Default to Medium
+
+    bestMove = None
+    bestScore = -CHECKMATE
+
+    for move in validMoves:
+        gs.makeMove(move)
+        score = findMoveMinimax(gs, validMoves, search_depth - 1, alpha, beta, not gs.whiteToMove, start_time, search_depth)  # ✅ Passed validMoves
+        gs.undoMove()
+
+        if score > bestScore:
+            bestScore = score
+            bestMove = move
+
+        # **Check Time Cap (30s)**
+        if time.time() - start_time > 30:
+            print("Time limit reached, returning best move found so far.")
+            return bestMove if bestMove else findRandomMove(validMoves)
 
     elapsed_time = time.time() - start_time
     print(f"Elapsed time: {elapsed_time:.2f} sec")
     print(f"Nodes searched: {nodes}")
 
-    # If no move was chosen before timeout, pick a random move as a fallback
-    return nextMove if nextMove else findRandomMove(validMoves)
+    return bestMove if bestMove else findRandomMove(validMoves)
 
 
-def findMoveMinimax(gs, validMoves, depth, alpha, beta, whiteToMove, start_time):
+
+
+def findMoveMinimax(gs, validMoves, depth, alpha, beta, whiteToMove, start_time, search_depth):
+    """Minimax function with alpha-beta pruning and timeout handling."""
     global nextMove, nodes
     nodes += 1
 
@@ -109,14 +131,14 @@ def findMoveMinimax(gs, validMoves, depth, alpha, beta, whiteToMove, start_time)
         for move in validMoves:
             gs.makeMove(move)
             nextMoves = gs.getValidMoves()
-            score = findMoveMinimax(gs, nextMoves, depth - 1, alpha, beta, False, start_time)
+            score = findMoveMinimax(gs, nextMoves, depth - 1, alpha, beta, False, start_time, search_depth)  # ✅ Pass search_depth
             gs.undoMove()
 
             if score > maxScore:
                 maxScore = score
                 bestMove = move
-                if depth == MAX_DEPTH:
-                    nextMove = move
+                if depth == search_depth:  # ✅ Use search_depth instead of undefined MAX_DEPTH
+                    nextMove = move  # Save best move found
 
             alpha = max(alpha, score)
             if beta <= alpha:
@@ -128,19 +150,20 @@ def findMoveMinimax(gs, validMoves, depth, alpha, beta, whiteToMove, start_time)
         for move in validMoves:
             gs.makeMove(move)
             nextMoves = gs.getValidMoves()
-            score = findMoveMinimax(gs, nextMoves, depth - 1, alpha, beta, True, start_time)
+            score = findMoveMinimax(gs, nextMoves, depth - 1, alpha, beta, True, start_time, search_depth)  # ✅ Pass search_depth
             gs.undoMove()
 
             if score < minScore:
                 minScore = score
                 bestMove = move
-                if depth == MAX_DEPTH:
-                    nextMove = move
+                if depth == search_depth:  # ✅ Use search_depth instead of MAX_DEPTH
+                    nextMove = move  # Save best move found
 
             beta = min(beta, score)
             if beta <= alpha:
                 break
         return minScore
+
 
 
 def scoreBoard(gs):
